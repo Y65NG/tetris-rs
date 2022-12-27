@@ -1,5 +1,8 @@
 pub mod block;
 pub use block::*;
+pub use crossterm::{cursor, terminal, ExecutableCommand, QueueableCommand};
+use std::io::Stdout;
+pub use std::io::{stdout, Write};
 
 pub struct Frame {
     frame: Vec<u16>,
@@ -11,6 +14,7 @@ impl Frame {
         Frame {
             frame: {
                 let mut upper: Vec<u16> = vec![0b100000000001; 24];
+                upper.push(0b111111111111);
                 upper.push(0b111111111111);
                 upper
             },
@@ -24,18 +28,9 @@ impl Frame {
         }
     }
 
-    pub fn print_frame(&self) {
-        println!("",);
-        fn print_row(row: u16) {
-            for i in 0..12 {
-                if row & (1 << (11 - i)) != 0 {
-                    print!("⬜️");
-                } else {
-                    print!("⬛️");
-                }
-            }
-            println!();
-        }
+    pub fn print_frame(&self, stdout: &mut Stdout) {
+        stdout.execute(cursor::Hide).unwrap();
+        println!();
 
         if let Some(block) = self.block.clone() {
             let (row, mut col) = block.pos;
@@ -44,20 +39,44 @@ impl Frame {
             }
             let shape = block.draw();
 
-            for f_row in 3..(self.frame.len() as i16) {
+            for f_row in 3..(self.frame.len() as i16 - 1) {
                 if (row..(row + 4)).contains(&(f_row)) {
-                    print_row(
-                        self.frame[f_row as usize]
-                            | shape[(f_row - row) as usize] << (11 - 4 - col),
+                    write(
+                        stdout,
+                        &row_str(
+                            self.frame[f_row as usize]
+                                | shape[(f_row - row) as usize] << (11 - 4 - col),
+                        ),
                     );
                 } else {
-                    print_row(self.frame[f_row as usize]);
+                    write(stdout, &row_str(self.frame[f_row as usize]));
                 }
             }
         } else {
             for f_row in 0..self.frame.len() {
                 println!("{:b}", self.frame[f_row]);
             }
+        }
+
+        fn write(stdout: &mut Stdout, s: &str) {
+            stdout.write(s.as_bytes()).unwrap();
+            // stdout.flush().unwrap();
+        }
+
+        fn row_str(row: u16) -> String {
+            // let mut stdout = stdout();
+            let mut result = String::new();
+            for i in 0..12 {
+                if row & (1 << (11 - i)) != 0 {
+                    result.push_str("⬜️");
+                    // print!("⬜️");
+                } else {
+                    result.push_str("⬛️");
+                    // print!("⬛️");
+                }
+            }
+            result.push('\n');
+            result
         }
     }
 
@@ -89,25 +108,12 @@ impl Frame {
         self.frame[3] != 0b100000000001
     }
 
-    // fn fill_row(&mut self, row: usize) {
-    //     self.frame[row] = 0b111111111111;
-    // }
-
     // try to move a block
     fn move_block(&self, dir: Direction) -> Option<Block> {
         if let Some(mut block) = self.block.clone() {
             match dir {
-                Direction::Left => {
-                    // dbg!(&block.pos.1);
-                    block.pos.1 -= 1;
-                    // dbg!(&block.pos.1);
-                }
-                Direction::Right => {
-                    // dbg!(&block.pos.1);
-                    block.pos.1 += 1;
-                    // dbg!(&block.pos.1);
-                }
-
+                Direction::Left => block.pos.1 -= 1,
+                Direction::Right => block.pos.1 += 1,
                 Direction::Down => block.pos.0 += 1,
                 Direction::Up => block.rotate(),
             }
@@ -124,6 +130,9 @@ impl Frame {
                 true => {
                     // panic!("collided");
                     if dir == Direction::Down {
+                        while self.is_collided(&mut self.block.as_ref().expect("no block")) {
+                            self.set_move(Direction::Up);
+                        }
                         self.set_block();
                         self.collapse();
                     }
