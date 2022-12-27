@@ -13,7 +13,6 @@ impl Frame {
                 let mut upper: Vec<u16> = vec![0b100000000001; 24];
                 upper.push(0b111111111111);
                 upper
-                // <Vec<u16> as TryInto<[u16; 25]>>::try_into(upper).unwrap()
             },
             block: None,
         }
@@ -39,10 +38,13 @@ impl Frame {
         }
 
         if let Some(block) = self.block.clone() {
-            let (row, col) = block.pos;
+            let (row, mut col) = block.pos;
+            if 11 - 4 - col < 0 {
+                col = 11 - 4;
+            }
             let shape = block.draw();
 
-            for f_row in 0..(self.frame.len() as i16) {
+            for f_row in 3..(self.frame.len() as i16) {
                 if (row..(row + 4)).contains(&(f_row)) {
                     print_row(
                         self.frame[f_row as usize]
@@ -67,28 +69,45 @@ impl Frame {
             if shape[(r - row) as usize] == 0 {
                 continue;
             }
-
-            if self.frame[r as usize] & (shape[(r - row) as usize] << (11 - 4 - col)) != 0 {
+            if r == 24 {
                 return true;
+            }
+            if 11 - 4 - col > 0 {
+                if self.frame[r as usize] & (shape[(r - row) as usize] << (11 - 4 - col)) != 0 {
+                    return true;
+                }
+            } else {
+                if self.frame[r as usize] & (shape[(r - row) as usize] >> (col - 7)) != 0 {
+                    return true;
+                }
             }
         }
         false
     }
 
     pub fn is_game_over(&self) -> bool {
-        self.frame[3] != 0
+        self.frame[3] != 0b100000000001
     }
 
-    pub fn fill_row(&mut self, row: usize) {
-        self.frame[row] = 0b111111111111;
-    }
+    // fn fill_row(&mut self, row: usize) {
+    //     self.frame[row] = 0b111111111111;
+    // }
 
     // try to move a block
     fn move_block(&self, dir: Direction) -> Option<Block> {
         if let Some(mut block) = self.block.clone() {
             match dir {
-                Direction::Left => block.pos.1 -= 1,
-                Direction::Right => block.pos.1 += 1,
+                Direction::Left => {
+                    // dbg!(&block.pos.1);
+                    block.pos.1 -= 1;
+                    // dbg!(&block.pos.1);
+                }
+                Direction::Right => {
+                    // dbg!(&block.pos.1);
+                    block.pos.1 += 1;
+                    // dbg!(&block.pos.1);
+                }
+
                 Direction::Down => block.pos.0 += 1,
                 Direction::Up => block.rotate(),
             }
@@ -106,6 +125,7 @@ impl Frame {
                     // panic!("collided");
                     if dir == Direction::Down {
                         self.set_block();
+                        self.collapse();
                     }
                 }
             }
@@ -128,7 +148,6 @@ impl Frame {
             // println!("{}", self.frame[r]);
             if self.frame[r] == 0b111111111111 {
                 self.frame.remove(r);
-                // println!("yes {}", row);
                 self.frame.insert(0, 0b100000000001);
             }
         }
