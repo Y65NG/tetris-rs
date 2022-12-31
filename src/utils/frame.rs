@@ -1,4 +1,5 @@
 pub mod block;
+use crate::ui;
 pub use block::*;
 pub use crossterm::{cursor, terminal, ExecutableCommand, QueueableCommand};
 use std::io::Stdout;
@@ -7,6 +8,8 @@ pub use std::io::{stdout, Write};
 pub struct Frame {
     frame: Vec<u16>,
     pub block: Option<Block>,
+    pub next_block: Option<Block>,
+    pub score: u32,
 }
 
 impl Frame {
@@ -18,20 +21,39 @@ impl Frame {
                 upper.push(0b111111111111);
                 upper
             },
-            block: None,
+            block: Some(Block::new(rand::random(), Direction::Up)),
+            next_block: None,
+            score: 0,
         }
     }
 
     pub fn generate_block(&mut self) {
-        if self.block == None {
-            self.block = Some(Block::new(rand::random(), Direction::Up))
+        if self.next_block == None {
+            self.next_block = Some(Block::new(rand::random(), Direction::Up))
         }
     }
 
-    pub fn print_frame(&self, stdout: &mut Stdout) {
-        stdout.execute(cursor::Hide).unwrap();
-        println!();
+    pub fn print_next_block(&self) -> String {
+        let mut result = String::new();
+        if let Some(block) = self.next_block.clone() {
+            let (row, col) = block.pos;
+            let shape = block.draw();
+            for f_row in 0..4 {
+                for f_col in 0..4 {
+                    if shape[f_row] & (1 << (3 - f_col)) != 0 {
+                        result.push_str("⬜️");
+                    } else {
+                        result.push_str("  ");
+                    }
+                }
+                result.push_str("\n");
+            }
+        }
+        result
+    }
 
+    pub fn print_frame(&self) -> String {
+        let mut result = String::new();
         if let Some(block) = self.block.clone() {
             let (row, mut col) = block.pos;
             if 11 - 4 - col < 0 {
@@ -41,27 +63,17 @@ impl Frame {
 
             for f_row in 3..(self.frame.len() as i16 - 1) {
                 if (row..(row + 4)).contains(&(f_row)) {
-                    write(
-                        stdout,
-                        &row_str(
-                            self.frame[f_row as usize]
-                                | shape[(f_row - row) as usize] << (11 - 4 - col),
-                        ),
-                    );
+                    result.push_str(&row_str(
+                        self.frame[f_row as usize]
+                            | shape[(f_row - row) as usize] << (11 - 4 - col),
+                    ));
                 } else {
-                    write(stdout, &row_str(self.frame[f_row as usize]));
+                    result.push_str(&row_str(self.frame[f_row as usize]));
                 }
-            }
-        } else {
-            for f_row in 0..self.frame.len() {
-                println!("{:b}", self.frame[f_row]);
             }
         }
 
-        fn write(stdout: &mut Stdout, s: &str) {
-            stdout.write(s.as_bytes()).unwrap();
-            // stdout.flush().unwrap();
-        }
+        return result;
 
         fn row_str(row: u16) -> String {
             // let mut stdout = stdout();
@@ -71,7 +83,7 @@ impl Frame {
                     result.push_str("⬜️");
                     // print!("⬜️");
                 } else {
-                    result.push_str("⬛️");
+                    result.push_str("  ");
                     // print!("⬛️");
                 }
             }
@@ -149,6 +161,7 @@ impl Frame {
                 let shape = block.draw();
                 self.frame[r as usize] |= shape[(r - row) as usize] << (11 - 4 - col);
             }
+            self.block = self.next_block.take();
         }
     }
 
@@ -156,6 +169,7 @@ impl Frame {
         for r in 0..24 {
             // println!("{}", self.frame[r]);
             if self.frame[r] == 0b111111111111 {
+                self.score += 1000;
                 self.frame.remove(r);
                 self.frame.insert(0, 0b100000000001);
             }
