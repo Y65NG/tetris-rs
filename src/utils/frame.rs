@@ -1,15 +1,14 @@
 pub mod block;
-use crate::ui;
 pub use block::*;
 pub use crossterm::{cursor, terminal, ExecutableCommand, QueueableCommand};
-use std::io::Stdout;
 pub use std::io::{stdout, Write};
 
 pub struct Frame {
-    frame: Vec<u16>,
+    pub frame: Vec<u16>,
     pub block: Option<Block>,
     pub next_block: Option<Block>,
     pub score: u32,
+    pub level: u32,
 }
 
 impl Frame {
@@ -24,6 +23,17 @@ impl Frame {
             block: Some(Block::new(rand::random(), Direction::Up)),
             next_block: None,
             score: 0,
+            level: 1,
+        }
+    }
+
+    pub fn set_level(&mut self) {
+        match self.score {
+            0..=1000 => self.level = 1,
+            1001..=3000 => self.level = 2,
+            3001..=5000 => self.level = 3,
+            5001..=10000 => self.level = 4,
+            _ => self.level = 5,
         }
     }
 
@@ -36,12 +46,11 @@ impl Frame {
     pub fn print_next_block(&self) -> String {
         let mut result = String::new();
         if let Some(block) = self.next_block.clone() {
-            let (row, col) = block.pos;
             let shape = block.draw();
             for f_row in 0..4 {
                 for f_col in 0..4 {
                     if shape[f_row] & (1 << (3 - f_col)) != 0 {
-                        result.push_str("⬜️");
+                        result.push_str("⚪️");
                     } else {
                         result.push_str("  ");
                     }
@@ -80,10 +89,10 @@ impl Frame {
             let mut result = String::new();
             for i in 0..12 {
                 if row & (1 << (11 - i)) != 0 {
-                    result.push_str("⬜️");
+                    result.push_str("⚪️");
                     // print!("⬜️");
                 } else {
-                    result.push_str("  ");
+                    result.push_str("⬛️");
                     // print!("⬛️");
                 }
             }
@@ -166,10 +175,12 @@ impl Frame {
     }
 
     pub fn collapse(&mut self) {
+        let mut count = 0;
         for r in 0..24 {
             // println!("{}", self.frame[r]);
             if self.frame[r] == 0b111111111111 {
-                self.score += 1000;
+                self.score += 1000 + count * 400;
+                count += 1;
                 self.frame.remove(r);
                 self.frame.insert(0, 0b100000000001);
             }

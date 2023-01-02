@@ -1,20 +1,16 @@
-use std::{
-    io::{self, Result, Stdout},
-    thread,
-};
+use std::io::{self, Result, Stdout};
 
 use tui::{
     self,
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
-    text::{Span, Text},
-    widgets::{Block, Borders, Clear, Paragraph, Widget},
+    text::Text,
+    widgets::{Block, Borders, Clear, Paragraph},
     Terminal,
 };
 
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -43,6 +39,7 @@ pub fn end_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result
 pub fn draw_ui(
     frame: &frame::Frame,
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+    level: u32,
 ) -> Result<Vec<Rect>> {
     let mut result: Vec<Rect> = Vec::new();
     terminal.draw(|f| {
@@ -60,7 +57,14 @@ pub fn draw_ui(
         f.render_widget(Block::default(), all_chunks[0]);
         let upper_chunk = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+            .constraints(
+                [
+                    Constraint::Percentage(33),
+                    Constraint::Percentage(33),
+                    Constraint::Percentage(33),
+                ]
+                .as_ref(),
+            )
             .split(all_chunks[0]);
 
         // upper left score
@@ -77,15 +81,33 @@ pub fn draw_ui(
             score_chunk[0],
         );
 
+        // upper middle level
+        f.render_widget(
+            Block::default().title("Level").borders(Borders::ALL),
+            upper_chunk[1],
+        );
+        let level_chunk = Layout::default()
+            .constraints([Constraint::Percentage(100)].as_ref())
+            .margin(1)
+            .split(upper_chunk[1]);
+
+        // f.render_widget(Clear, level_chunk[0]);
+
+        f.render_widget(
+            Paragraph::new(Text::raw(format!("{}", level))),
+            level_chunk[0],
+        );
+
         // upper right next block
         f.render_widget(
             Block::default().title("Next Block").borders(Borders::ALL),
-            upper_chunk[1],
+            upper_chunk[2],
         );
         let next_block_chunk = Layout::default()
-            .constraints([Constraint::Percentage(100), Constraint::Percentage(50)].as_ref())
-            .margin(1)
-            .split(upper_chunk[1]);
+            .constraints([Constraint::Percentage(100)].as_ref())
+            .vertical_margin(1)
+            .horizontal_margin(2)
+            .split(upper_chunk[2]);
 
         f.render_widget(
             Paragraph::new(Text::raw(frame.print_next_block())),
@@ -100,8 +122,8 @@ pub fn draw_ui(
             .constraints(
                 [
                     Constraint::Percentage(33),
-                    Constraint::Percentage(34),
-                    Constraint::Percentage(33),
+                    Constraint::Percentage(67),
+                    Constraint::Percentage(1),
                 ]
                 .as_ref(),
             )
@@ -115,5 +137,19 @@ pub fn draw_ui(
     })?;
     Ok(result)
 }
+
+// fn draw_frame(frame: &frame::Frame, f: &mut tui::Frame<CrosstermBackend<Stdout>>, area: Rect) {
+//     let row_chunk = Layout::default()
+//         .constraints([Constraint::Length(2); 22].as_ref())
+//         .split(area);
+//     let
+//     for row in &frame.frame {
+//         for i in 0..12 {
+//             if row & (1 << (11 - i)) != 0 {
+//             } else {
+//             }
+//         }
+//     }
+// }
 
 // fn draw_
