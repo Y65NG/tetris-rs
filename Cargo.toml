@@ -8,5 +8,10 @@ edition = "2021"
 [dependencies]
 crossterm = "0.25.0"
 device_query = "1.1.1"
+piston = "0.53.2"
+piston_window = "0.127.0"
 rand = "0.8.5"
 tui = "0.19.0"
+
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"

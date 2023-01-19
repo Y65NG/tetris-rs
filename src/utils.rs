@@ -1,11 +1,16 @@
 pub mod frame;
 
 use crate::ui::*;
+use crate::ui2::*;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use frame::*;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
+
+static FRAME_WIDTH: i32 = 300;
+static FRAME_HEIGHT: i32 = 600;
+static BLOCK_WIDTH: i32 = 10;
 
 pub fn create_game() {
     // thread::sleep(Duration::from_millis(2000));

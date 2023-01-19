@@ -50,7 +50,7 @@ impl Frame {
             for f_row in 0..4 {
                 for f_col in 0..4 {
                     if shape[f_row] & (1 << (3 - f_col)) != 0 {
-                        result.push_str("⚪️");
+                        result.push_str("⚪️"); // ⚪️
                     } else {
                         result.push_str("  ");
                     }
@@ -89,8 +89,8 @@ impl Frame {
             let mut result = String::new();
             for i in 0..12 {
                 if row & (1 << (11 - i)) != 0 {
-                    result.push_str("⚪️");
-                    // print!("⬜️");
+                    result.push_str("⚪️"); // ⚪️██
+                                           // print!("⬜️");
                 } else {
                     result.push_str("⬛️");
                     // print!("⬛️");

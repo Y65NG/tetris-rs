@@ -4,6 +4,7 @@ use tui::{
     self,
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
+    style::*,
     text::Text,
     widgets::{Block, Borders, Clear, Paragraph},
     Terminal,
@@ -132,24 +133,56 @@ pub fn draw_ui(
             .split(all_chunks[1]);
 
         let result = frame.print_frame();
-        // f.render_widget(Clear, frame_chunk[0]);
         f.render_widget(Paragraph::new(Text::raw(result)), frame_chunk[1]);
+        // draw_frame(frame, f, frame_chunk[1]);
     })?;
     Ok(result)
 }
 
-// fn draw_frame(frame: &frame::Frame, f: &mut tui::Frame<CrosstermBackend<Stdout>>, area: Rect) {
-//     let row_chunk = Layout::default()
-//         .constraints([Constraint::Length(2); 22].as_ref())
-//         .split(area);
-//     let
-//     for row in &frame.frame {
-//         for i in 0..12 {
-//             if row & (1 << (11 - i)) != 0 {
-//             } else {
-//             }
-//         }
-//     }
-// }
+fn draw_frame(frame: &frame::Frame, f: &mut tui::Frame<CrosstermBackend<Stdout>>, area: Rect) {
+    let row_chunk = Layout::default()
+        .constraints([Constraint::Ratio(1, 22); 22].as_ref())
+        // .margin(1)
+        .split(area);
 
+    if let Some(block) = frame.block.as_ref() {
+        let shape = block.draw();
+        let (b_row, b_col) = (block.pos.0 - 3, block.pos.1 - 3);
+
+        let frame = &frame.frame;
+        for (r, row_area) in row_chunk.iter().enumerate() {
+            let col_chunk = Layout::default()
+                .constraints([Constraint::Ratio(1, 12); 12])
+                // .horizontal_margin(1)
+                .split(row_chunk[r]);
+
+            for (c, entry) in col_chunk.iter().enumerate() {
+                let row;
+                if b_row >= 3 && ((b_row)..(b_row + 4)).contains(&(r as i16)) {
+                    // dbg!(r, b_row);
+                    row = frame[r + 3] | (shape[r - b_row as usize] << (11 - 4 - b_col));
+                } else {
+                    row = frame[r + 3];
+                }
+                // println!("{}", row & (1 << (11 - c)));
+
+                if row & (1 << (11 - c)) != 0 {
+                    f.render_widget(
+                        Block::default()
+                            // .borders(Borders::ALL)
+                            .style(Style::default().bg(Color::White)),
+                        *entry,
+                    )
+                } else {
+                    f.render_widget(
+                        Block::default()
+                            // .borders(Borders::ALL)
+                            .style(Style::default().bg(Color::Black)),
+                        *entry,
+                    )
+                }
+            }
+        }
+    }
+}
 // fn draw_
